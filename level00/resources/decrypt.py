@@ -1,17 +1,15 @@
 """Level00 Caesar Cipher Decoder"""
 
+import string
+
 def caesar_decrypt(text, shift):
     """Decrypt text using Caesar cipher with given shift"""
     result = ""
     for char in text:
-        if char.isalpha():
-            if char.isupper():
-                base = ord('A')
-            else:
-                base = ord('a')
-
-            shifted = (ord(char) - base - shift) % 26
-            result += chr(base + shifted)
+        if char in string.ascii_letters:
+            alphabet = string.ascii_uppercase if char.isupper() else string.ascii_lowercase
+            shifted_index = (alphabet.index(char) - shift) % 26
+            result += alphabet[shifted_index]
         else:
             result += char
 

@@ -1,48 +1,33 @@
 """Level02 PCAP Telnet Password Extractor"""
 
-import struct
 import os
+
+try:
+    import dpkt
+    HAS_DPKT = True
+except ImportError:
+    HAS_DPKT = False
 
 
 def parse_pcap(pcap_file):
-    """Parse PCAP file and extract TCP payloads"""
-    with open(pcap_file, 'rb') as f:
-        data = f.read()
+    """Parse PCAP file and extract TCP payloads using dpkt"""
+    if not HAS_DPKT:
+        raise ImportError("dpkt library required. Install with: pip install dpkt")
 
     packets_data = []
-    pos = 24
-
-    while pos < len(data) - 16:
-        if pos + 16 > len(data):
-            break
-
-        ts_sec, ts_usec, incl_len, orig_len = struct.unpack('<IIII', data[pos:pos+16])
-        pos += 16
-
-        if incl_len == 0 or incl_len > 65535 or pos + incl_len > len(data):
-            break
-
-        packet = data[pos:pos+incl_len]
-        pos += incl_len
-
-        if len(packet) < 34:
-            continue
-
-        ip_version_ihl = packet[14]
-        ihl = (ip_version_ihl & 0x0f) * 4
-
-        if len(packet) < 14 + ihl + 20:
-            continue
-
-        tcp_start = 14 + ihl
-        data_offset_res = packet[tcp_start + 12]
-        tcp_header_len = ((data_offset_res >> 4) & 0xf) * 4
-
-        payload_start = tcp_start + tcp_header_len
-        if len(packet) > payload_start:
-            payload = packet[payload_start:]
-            if payload:
-                packets_data.append(payload)
+    with open(pcap_file, 'rb') as f:
+        pcap = dpkt.pcap.Reader(f)
+        for ts, buf in pcap:
+            try:
+                eth = dpkt.ethernet.Ethernet(buf)
+                if isinstance(eth.data, dpkt.ip.IP):
+                    ip = eth.data
+                    if isinstance(ip.data, dpkt.tcp.TCP):
+                        tcp = ip.data
+                        if tcp.data:
+                            packets_data.append(tcp.data)
+            except (dpkt.UnpackError, AttributeError):
+                continue
 
     return packets_data
 

@@ -1,24 +1,17 @@
 """Level01 DES Password Hash Cracker"""
 
-import subprocess
+from passlib.context import CryptContext
+
+
+des_context = CryptContext(schemes=["des_crypt"], deprecated="auto")
 
 
 def hash_password_des(password, salt):
-    """Hash password using DES crypt via system Perl"""
+    """Hash password using DES crypt via passlib"""
     try:
-        perl_code = f"print crypt('{password}', '{salt}')"
-        result = subprocess.run(
-            ['perl', '-e', perl_code],
-            capture_output=True,
-            text=True,
-            timeout=5
-        )
-        if result.returncode == 0:
-            return result.stdout.strip()
-    except (FileNotFoundError, subprocess.TimeoutExpired):
-        pass
-
-    return None
+        return des_context.hash(password, salt=salt)
+    except Exception:
+        return None
 
 
 def crack_des_hash(target_hash, wordlist_file=None):
@@ -26,12 +19,39 @@ def crack_des_hash(target_hash, wordlist_file=None):
     salt = target_hash[:2]
 
     common_passwords = [
-        "abcdefg", "password", "123456", "admin", "test", "user", "root",
-        "flag01", "level01", "level", "flag", "snowcrash", "crash", "snow",
-        "password123", "admin123", "test123", "qwerty", "abc123",
-        "login", "access", "welcome", "letmein", "monkey", "dragon",
-        "master", "shadow", "iloveyou", "superman", "batman",
-        "bonnie", "clyde", "nottoohardhere",
+        "abcdefg",
+        "password",
+        "123456",
+        "admin",
+        "test",
+        "user",
+        "root",
+        "flag01",
+        "level01",
+        "level",
+        "flag",
+        "snowcrash",
+        "crash",
+        "snow",
+        "password123",
+        "admin123",
+        "test123",
+        "qwerty",
+        "abc123",
+        "login",
+        "access",
+        "welcome",
+        "letmein",
+        "monkey",
+        "dragon",
+        "master",
+        "shadow",
+        "iloveyou",
+        "superman",
+        "batman",
+        "bonnie",
+        "clyde",
+        "nottoohardhere",
     ]
 
     print("[*] Attempting DES hash cracking")
@@ -52,7 +72,7 @@ def crack_des_hash(target_hash, wordlist_file=None):
     if wordlist_file:
         print(f"\n[*] Phase 2: Testing wordlist from {wordlist_file}...")
         try:
-            with open(wordlist_file, 'r') as f:
+            with open(wordlist_file, "r") as f:
                 count = 0
                 for line in f:
                     word = line.strip()
@@ -100,10 +120,7 @@ def main():
 
     print("[*] Starting dictionary attack...\n")
 
-    password = crack_des_hash(
-        flag01_hash,
-        wordlist_file="/usr/share/dict/words"
-    )
+    password = crack_des_hash(flag01_hash, wordlist_file="/usr/share/dict/words")
 
     if password:
         print("SUCCESS!")

@@ -9,8 +9,6 @@ qemu-system-x86_64 -m 2048 -cdrom ./SnowCrash.iso -boot d -net nic,model=virtio 
 ## Objective
 Find the password to access the flag00 account and retrieve the token.
 
-## Solution
-
 ### Step 1: Discover the Encoded Password
 The password hint is hidden in a file with unusual permissions: `/usr/sbin/john`
 
@@ -40,24 +38,12 @@ getflag
 # Output: Check flag.Here is your token : x24ti5gi3x0ol2eh4esiuxias
 ```
 
-## Key Points
+## Security Flaws
 1. **Information Disclosure**: The encoded password is stored in a readable file (`/usr/sbin/john`) owned by flag00
 2. **Weak Encryption**: The Caesar cipher is a simple substitution cipher that's easy to break
-3. **Token**: The flag token for level01 is `x24ti5gi3x0ol2eh4esiuxias`
 
-## Final Answer
+## Answer
 **Flag00 Password:** `nottoohardhere`
 **Level00 Token:** `x24ti5gi3x0ol2eh4esiuxias`
 **Token for Level01:** `x24ti5gi3x0ol2eh4esiuxias`
 
-## Decryption Details
-Caesar cipher shift 15 transformation:
-```
-a->p, b->q, c->r, ..., p->e, q->f, ..., z->o
-```
-
-Applying to `cdiiddwpgswtgt`:
-```
-c->n, d->o, i->t, i->t, d->o, d->o, w->h, p->a, g->r, s->d, w->h, t->e, g->r, t->e
-Result: nottoohardhere
-```

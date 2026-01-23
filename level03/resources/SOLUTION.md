@@ -1,5 +1,11 @@
 # Level03 Solution
 
+## Starting VM
+
+```bash
+qemu-system-x86_64 -m 2048 -cdrom ./SnowCrash.iso -boot d -net nic,model=virtio -net user,hostfwd=tcp::4242-:4242
+```
+
 ## Objective
 Exploit a setuid binary to gain access to the `flag03` account and retrieve the password token.
 
@@ -70,28 +76,14 @@ Output:
 Check flag.Here is your token : qi0maab88jeaj46qoumi7maus
 ```
 
-## Key Vulnerabilities
+## Security Flaws
 
 1. **Insecure use of `system()` with relative/searchable commands**: Using `system()` with commands that depend on PATH is dangerous in setuid programs
 2. **No PATH sanitization**: The program doesn't set a safe PATH or use absolute paths
 3. **Trust in environment variables**: Setuid programs should never trust user-controlled environment variables
 
-## Security Lessons
+## Answer
 
-**Modern Best Practice:**
-```c
-// Bad
-system("/usr/bin/env echo Exploit me");
-
-// Better
-execl("/bin/echo", "echo", "Exploit me", NULL);
-
-// Best practice in setuid programs
-// Drop privileges immediately, validate all inputs, use absolute paths
-```
-
-## Final Answer
-
-- **Level03 Token (password for level04)**: `qi0maab88jeaj46qoumi7maus`
+**Level03 Token (password for level04)**: `qi0maab88jeaj46qoumi7maus`
 - **Vulnerability Type**: PATH Manipulation / Arbitrary Code Execution via setuid binary
 - **Attack Type**: Privilege Escalation through environment variable manipulation

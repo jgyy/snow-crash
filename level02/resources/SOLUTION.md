@@ -1,9 +1,13 @@
 # Level02 Solution
 
+## Starting VM
+
+```bash
+qemu-system-x86_64 -m 2048 -cdrom ./SnowCrash.iso -boot d -net nic,model=virtio -net user,hostfwd=tcp::4242-:4242
+```
+
 ## Objective
 Extract password from network traffic and access the flag02 account.
-
-## Solution
 
 ### Step 1: Discover the PCAP File
 
@@ -65,23 +69,15 @@ flag02@SnowCrash:~$ getflag
 Check flag.Here is your token : kooda2puivaav1idi4f57q8iq
 ```
 
-## Key Vulnerabilities
+
+## Security Flaws
 
 1. **Plain-text Protocol**: Telnet transmits all data unencrypted
 2. **Network Sniffing**: Captured traffic reveals complete login credentials
 3. **No Encryption**: Password visible in packet capture
-4. **Weak Security**: Relying on PCAP obscurity rather than encryption
 
-## Final Answer
+## Answer
 
 - **Flag02 Password**: `ft_waNDReL0L`
 - **Level02 Token**: `kooda2puivaav1idi4f57q8iq`
 - **Token for Level03**: `kooda2puivaav1idi4f57q8iq`
-
-## Security Lessons
-
-**Modern solutions:**
-- Use SSH (encrypted) instead of telnet (plain-text)
-- Use TLS/SSL for all network communications
-- Enforce strong encryption protocols
-- Monitor and alert on unencrypted protocol usage

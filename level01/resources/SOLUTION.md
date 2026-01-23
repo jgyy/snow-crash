@@ -1,9 +1,13 @@
 # Level01 Solution
 
+## Starting VM
+
+```bash
+qemu-system-x86_64 -m 2048 -cdrom ./SnowCrash.iso -boot d -net nic,model=virtio -net user,hostfwd=tcp::4242-:4242
+```
+
 ## Objective
 Find the password to access the flag01 account and retrieve the token.
-
-## Solution
 
 ### Step 1: Examine /etc/passwd for flag01
 
@@ -58,7 +62,13 @@ flag01@SnowCrash:~$ getflag
 Check flag.Here is your token : f2av5il02puano7naaf6adaaf
 ```
 
-## Final Answer
+## Security Flaws
+
+1. **Weak Password Hash**: DES crypt with only ~70 bits of key strength
+2. **Vulnerable to Dictionary Attacks**: Small password space (8 character limit)
+3. **Hash Stored in /etc/passwd**: Traditionally world-readable in older systems
+
+## Answer
 
 - **Flag01 Password**: `abcdefg`
 - **Level01 Token**: `f2av5il02puano7naaf6adaaf`

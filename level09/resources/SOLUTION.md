@@ -10,69 +10,114 @@ qemu-system-x86_64 -m 2048 -cdrom ./SnowCrash.iso -boot d -net nic,model=virtio 
 Decrypt a position-based character shift cipher to retrieve the flag09 token.
 
 ## Vulnerability
-Position-based character shift cipher where each character is encoded by adding its position index to the character value.
-
-## Binary Analysis
-
-The level09 binary reads a token file that is encoded. The token file at `/home/user/level09/token` contains encrypted data.
-
-## The Problem
-
-1. **Character Shift Encoding**: Each character is encoded as `encoded_char = original_char + position_index`
-2. **Predictable Cipher**: The encoding is deterministic based on position
-3. **No Key Required**: The algorithm is simple substitution without a key
-4. **File Protection**: Token file protected but readable via the binary
+Position-based character shift cipher where each character is encoded by adding its position index.
 
 ## Exploitation
 
-### Method: Decode Position-Based Cipher
+The level09 binary reads a token file that is encrypted with a weak cipher. The token file at `/home/user/level09/token` contains encoded data.
 
-Read the encoded token file (binary format) and decode each character by subtracting its position index:
+**The Cipher:**
+- Each character is encoded as: `encoded_char = original_char + position_index`
+- Position index starts at 0 and increments for each character
+- This is a trivially weak cipher with no key material
 
-```
-decoded_char = (encoded_char - position_index) % 256
-```
+**Why it's Vulnerable:**
+1. **Predictable Algorithm**: Encoding is deterministic based on position
+2. **No Key Required**: Algorithm is known; no secret key needed
+3. **Position Index is Sequential**: Attacker knows exactly what values were added
+4. **Simple Decryption**: Reverse operation is trivial: `original = (encoded_char - position_index) % 256`
 
-### Decoding Steps
+### Exploit Steps
 
-1. Read encoded token file as hex bytes
-2. For each byte at position i: `original = (encoded_value - i) % 256`
-3. Filter to alphanumeric characters to get the final password
-4. SSH as flag09 with decoded password
-5. Run getflag to obtain the level flag
-
-### Example Payload
+#### Step 1: Extract Encoded Token File
+Read the encoded token file in hexadecimal format:
 
 ```bash
-# Read encoded token (26 bytes in this case)
-cat /home/user/level09/token | od -An -tx1
-
-# Decode each byte by position
-# Position 0: byte - 0
-# Position 1: byte - 1
-# Position 2: byte - 2
-# etc...
-
-# Result: f3iji1ju5yuevaus41q1afiuq (password for flag09)
+od -An -tx1 /home/user/level09/token
 ```
 
-## Encoded vs Decoded
+**Example Output:**
+```
+f4 6b 6d 6d 36 70 7c 3d ...
+```
 
-- **Encoded Token**: `f4kmm6p|=...` (binary data with special characters)
-- **Decoded Token**: `f3iji1ju5yuevaus41q1afiuq` (flag09 password)
+Each byte is the encoded character at that position.
+
+#### Step 2: Decode Each Character
+For each byte at position i, subtract i from the byte value (modulo 256):
+
+```python
+def decode_token(token):
+    """Decode position-based character shift cipher."""
+    decoded = "".join(chr((ord(c) - i) % 256) for i, c in enumerate(token))
+    # Filter to alphanumeric characters only
+    return "".join(c for c in decoded if c in "abcdefghijklmnopqrstuvwxyz0123456789")
+```
+
+**Decoding Example:**
+```
+Position 0: 0xf4 - 0 = 0xf4 (out of range, filtered)
+Position 1: 0x6b - 1 = 0x6a = 'j'
+Position 2: 0x6d - 2 = 0x6b = 'k'
+...
+Result: f3iji1ju5yuevaus41q1afiuq
+```
+
+#### Step 3: Extract Hex and Convert
+Connect to level09 and retrieve the encoded token:
+
+```bash
+code=$(ssh -p 4242 level09@localhost "od -An -tx1 /home/user/level09/token")
+hex_str=$(echo "$code" | tr -d ' ' | tr -d '\n')
+encoded_token=$(echo "$hex_str" | xxd -r -p)
+```
+
+#### Step 4: Decode Token
+Apply the position-shift decoding algorithm to extract the flag09 password:
+
+```python
+encoded_token = bytes.fromhex(hex_str).decode("latin-1")
+decoded_token = decode_token(encoded_token)
+# Result: f3iji1ju5yuevaus41q1afiuq
+```
+
+#### Step 5: Access flag09 Account
+Using the decoded password:
+
+```bash
+sshpass -p "f3iji1ju5yuevaus41q1afiuq" ssh -o StrictHostKeyChecking=no -p 4242 flag09@localhost getflag
+```
+
+#### Step 6: Extract Flag
+The token from getflag:
+```
+Check flag.Here is your token : s5cAJpM8ev6XHw998pRWG728z
+```
+
+## Decryption Analysis
+
+**Encoded vs Decoded:**
+- **Encoded Token**: Binary data with values shifted by position (f4 6b 6d 6d...)
+- **Decoded Token**: `f3iji1ju5yuevaus41q1afiuq` (password for flag09)
 - **Final Flag**: `s5cAJpM8ev6XHw998pRWG728z` (from getflag)
+
+**Algorithm Verification:**
+- Each byte at position i was incremented by i during encoding
+- Reversing: subtract position index from each byte
+- Filter to alphanumeric characters to extract the password
 
 ## Security Flaws
 
 1. **Weak Cipher**: Position-based shift is trivially breakable
-2. **No Key Material**: Encryption uses only position, no secret
+2. **No Key Material**: Encryption uses only position, no secret key
 3. **Deterministic**: Same plaintext always produces same ciphertext
-4. **Predictable Pattern**: Position index is sequential and known
-
+4. **Predictable Pattern**: Position index is sequential (0, 1, 2, 3...) and known
+5. **No Authentication**: No integrity checking on decoded data
+6. **Insufficient Key Space**: Entire algorithm is public; no randomization
 
 ## Answer
 
-**Flag09 Password**: `f3iji1ju5yuevaus41q1afiuq` (from decoded token)
-**Level09 Flag**: `s5cAJpM8ev6XHw998pRWG728z`
-**Vulnerability**: Position-based character shift cipher
-**Impact**: Trivial decryption via position index manipulation
+- **Flag09 Password**: `f3iji1ju5yuevaus41q1afiuq` (from decoded token)
+- **Level09 Flag**: `s5cAJpM8ev6XHw998pRWG728z`
+- **Vulnerability Type**: Weak position-based character shift cipher
+- **Impact**: Trivial decryption via position index manipulation

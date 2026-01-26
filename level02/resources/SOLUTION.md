@@ -9,43 +9,52 @@ qemu-system-x86_64 -m 2048 -cdrom ./SnowCrash.iso -boot d -net nic,model=virtio 
 ## Objective
 Extract password from network traffic and access the flag02 account.
 
-### Step 1: Discover the PCAP File
+## Vulnerability
+Plain-text telnet traffic in PCAP file allows extraction of login credentials.
 
-The flag02-owned file is in the level02 home directory:
+## Exploitation
 
-```bash
-ls -la ~/
-# Output: level02.pcap (owned by flag02, readable by group)
-```
+### Step 1: Retrieve the PCAP File
 
-### Step 2: Analyze the PCAP File
-
-The `level02.pcap` contains a telnet session with login credentials:
+The flag02-owned PCAP file can be copied from the VM:
 
 ```bash
-# Extract telnet traffic
-tcpdump -r level02.pcap -A | grep -i password
+scp -P 4242 level02@localhost:/home/user/level02/level02.pcap .
 ```
 
-### Step 3: Decode the Telnet Session
+### Step 2: Parse PCAP to Extract TCP Payloads
 
-The PCAP shows a telnet login with password typed character-by-character:
-- Keystroke data includes telnet protocol codes (0xff bytes)
-- **Backspace character**: `7f` in hex (DEL key)
-- **Enter key**: `0d` in hex (CR)
+Use dpkt library to parse the PCAP file and extract telnet session data:
 
-The raw sequence shows:
-- Type: `ft_wandr`
-- Backspace 3 times: `7f 7f 7f` (removes "dra")
-- Type: `NDRel`
-- Backspace 1 time: `7f` (removes "l")
-- Type: `L0L`
-- Enter: `0d`
+```python
+import dpkt
 
-### Step 4: Reconstruct the Password
+with open("level02.pcap", "rb") as f:
+    for ts, buf in dpkt.pcap.Reader(f):
+        try:
+            eth = dpkt.ethernet.Ethernet(buf)
+            if isinstance(eth.data, dpkt.ip.IP) and isinstance(eth.data.data, dpkt.tcp.TCP):
+                if eth.data.data.data:
+                    packets.append(eth.data.data.data)
+        except:
+            continue
+```
 
-After applying backspaces to the typed characters:
+### Step 3: Decode Telnet Session with Backspace Handling
 
+The PCAP contains a telnet login sequence with backspace characters (0x7F).
+
+**Telnet Packet Structure:**
+- `0xFF` = telnet control code prefix (skip)
+- `0x7F` = backspace character (DEL)
+- `0x0A`, `0x0D` = newline characters
+
+**Decode Algorithm:**
+1. Remove telnet control sequences (0xFF bytes)
+2. Process backspace: when 0x7F is encountered, remove the previous character
+3. Extract printable ASCII characters
+
+**Reconstructed Password from PCAP:**
 ```
 ft_wandr -> [backspace x3] -> ft_w
 ft_w + NDRel -> ft_wNDRel
@@ -55,29 +64,27 @@ ft_wNDRe + L0L -> ft_wNDReL0L
 
 **Password:** `ft_waNDReL0L`
 
-### Step 5: Access flag02 Account
+### Step 4: Access flag02 Account via SSH
 
 ```bash
-su flag02
-# Enter password: ft_waNDReL0L
+sshpass -p "ft_waNDReL0L" ssh -o StrictHostKeyChecking=no -p 4242 flag02@localhost getflag
 ```
 
-### Step 6: Retrieve the Flag Token
+### Step 5: Retrieve the Flag Token
 
-```bash
-flag02@SnowCrash:~$ getflag
+```
 Check flag.Here is your token : kooda2puivaav1idi4f57q8iq
 ```
-
 
 ## Security Flaws
 
 1. **Plain-text Protocol**: Telnet transmits all data unencrypted
 2. **Network Sniffing**: Captured traffic reveals complete login credentials
-3. **No Encryption**: Password visible in packet capture
+3. **No Encryption**: Password fully visible in packet capture
+4. **Backspace Handling**: Keystroke data includes timing and editing information
 
 ## Answer
 
 - **Flag02 Password**: `ft_waNDReL0L`
 - **Level02 Token**: `kooda2puivaav1idi4f57q8iq`
-- **Token for Level03**: `kooda2puivaav1idi4f57q8iq`
+- **Vulnerability Type**: Network traffic interception via unencrypted protocol

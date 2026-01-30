@@ -1,5 +1,6 @@
 """Shared utilities for Snow Crash exploit scripts."""
 
+import os
 import subprocess
 import sys
 
@@ -29,9 +30,20 @@ def ssh_cmd(host, port, user, pwd, cmd):
         return -1, "", ""
 
 
-def scp_cmd(host, port, user, pwd, remote_path, local_path):
-    """Copy file from remote to local using scp."""
+def scp_cmd(host, port, user, pwd, path1, path2):
+    """Copy file via scp (bidirectional: detects upload vs download automatically)."""
     try:
+        is_temp_source = (
+            os.path.exists(path1)
+            and os.path.isfile(path1)
+            and ("tmp" in path1 or os.access(os.path.dirname(path1) or ".", os.W_OK))
+        )
+
+        if is_temp_source:
+            source, dest = path1, f"{user}@{host}:{path2}"
+        else:
+            source, dest = f"{user}@{host}:{path1}", path2
+
         result = subprocess.run(
             [
                 "sshpass",
@@ -42,8 +54,8 @@ def scp_cmd(host, port, user, pwd, remote_path, local_path):
                 "StrictHostKeyChecking=no",
                 "-P",
                 str(port),
-                f"{user}@{host}:{remote_path}",
-                local_path,
+                source,
+                dest,
             ],
             capture_output=True,
             text=True,

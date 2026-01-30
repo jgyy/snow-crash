@@ -34,7 +34,21 @@ The hash `42hDRfypTqqnw` is a **DES crypt hash**:
 
 ### Step 3: Crack the DES Hash via Dictionary Attack
 
-Use Python with passlib to test common passwords:
+**Method 1: Using `john` the Ripper (Fastest Manual Method)**
+
+Create a file with the hash in john format and crack it:
+
+```bash
+echo "flag01:42hDRfypTqqnw" > /tmp/hashes.txt
+john --format=des /tmp/hashes.txt
+# Output: abcdefg (flag01)
+john --show /tmp/hashes.txt
+# Output: flag01:abcdefg
+```
+
+**Method 2: Using Python with passlib (Alternative)**
+
+Test common passwords with Python:
 
 ```python
 from passlib.context import CryptContext
@@ -54,7 +68,7 @@ for pwd in common_passwords:
         break
 ```
 
-The password `abcdefg` matches the hash.
+**Result:** The password `abcdefg` matches the hash.
 
 ### Step 4: Access flag01 Account via SSH
 

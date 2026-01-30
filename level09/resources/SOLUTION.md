@@ -29,11 +29,11 @@ The level09 binary reads a token file that is encrypted with a weak cipher. The 
 
 ### Exploit Steps
 
-#### Step 1: Extract Encoded Token File
+#### Step 1: Extract Encoded Token File from Remote Host
 Read the encoded token file in hexadecimal format:
 
 ```bash
-od -An -tx1 /home/user/level09/token
+ssh -p 4242 level09@localhost "od -An -tx1 /home/user/level09/token"
 ```
 
 **Example Output:**
@@ -43,54 +43,76 @@ f4 6b 6d 6d 36 70 7c 3d ...
 
 Each byte is the encoded character at that position.
 
-#### Step 2: Decode Each Character
-For each byte at position i, subtract i from the byte value (modulo 256):
+#### Step 2: Manually Extract and Decode the Token
 
-```python
+**Manual Multi-Step Extraction:**
+
+```bash
+# Step 2a: Get the hex dump as a continuous string
+HEX_OUTPUT=$(ssh -p 4242 level09@localhost "od -An -tx1 /home/user/level09/token" | tr -d ' ' | tr -d '\n')
+echo "$HEX_OUTPUT"
+
+# Step 2b: Convert hex to raw bytes
+echo "$HEX_OUTPUT" | xxd -r -p > /tmp/encoded_token.bin
+
+# Step 2c: Display as binary to see the encoded characters
+od -A x -t x1z /tmp/encoded_token.bin
+```
+
+#### Step 3: Decode Using Python Script
+Create a Python script to decode the position-based cipher:
+
+```bash
+cat > /tmp/decode_level09.py << 'PYTHON_EOF'
+import sys
+
 def decode_token(token):
     """Decode position-based character shift cipher."""
     decoded = "".join(chr((ord(c) - i) % 256) for i, c in enumerate(token))
     # Filter to alphanumeric characters only
     return "".join(c for c in decoded if c in "abcdefghijklmnopqrstuvwxyz0123456789")
+
+# Read from file or stdin
+with open('/tmp/encoded_token.bin', 'rb') as f:
+    encoded_bytes = f.read()
+
+# Decode the token
+encoded_token = encoded_bytes.decode('latin-1')
+decoded_token = decode_token(encoded_token)
+print(f"Decoded Token: {decoded_token}")
+PYTHON_EOF
+
+python /tmp/decode_level09.py
+# Output: f3iji1ju5yuevaus41q1afiuq
 ```
 
-**Decoding Example:**
-```
-Position 0: 0xf4 - 0 = 0xf4 (out of range, filtered)
-Position 1: 0x6b - 1 = 0x6a = 'j'
-Position 2: 0x6d - 2 = 0x6b = 'k'
-...
-Result: f3iji1ju5yuevaus41q1afiuq
-```
-
-#### Step 3: Extract Hex and Convert
-Connect to level09 and retrieve the encoded token:
+**Alternative: Direct Bash/AWK Decoding (Without Python)**
 
 ```bash
-code=$(ssh -p 4242 level09@localhost "od -An -tx1 /home/user/level09/token")
-hex_str=$(echo "$code" | tr -d ' ' | tr -d '\n')
-encoded_token=$(echo "$hex_str" | xxd -r -p)
+# Extract hex and convert to ASCII, then apply position-based shift
+HEX=$(ssh -p 4242 level09@localhost "od -An -tx1 /home/user/level09/token" | tr -d ' ' | tr -d '\n')
+echo "$HEX" | xxd -r -p | od -An -t dC | awk '{
+    for(i=1;i<=NF;i++) {
+        val = $i - (i-1);
+        if (val < 0) val += 256;
+        if ((val >= 97 && val <= 122) || (val >= 48 && val <= 57)) {
+            printf "%c", val;
+        }
+    }
+}' ; echo
 ```
 
-#### Step 4: Decode Token
-Apply the position-shift decoding algorithm to extract the flag09 password:
-
-```python
-encoded_token = bytes.fromhex(hex_str).decode("latin-1")
-decoded_token = decode_token(encoded_token)
-# Result: f3iji1ju5yuevaus41q1afiuq
-```
-
-#### Step 5: Access flag09 Account
-Using the decoded password:
+#### Step 4: Access flag09 Account with Decoded Password
+Using the decoded password from above:
 
 ```bash
 sshpass -p "f3iji1ju5yuevaus41q1afiuq" ssh -o StrictHostKeyChecking=no -p 4242 flag09@localhost getflag
 ```
 
-#### Step 6: Extract Flag
+#### Step 5: Extract Final Flag
 The token from getflag:
-```
+```bash
+# Output should be:
 Check flag.Here is your token : s5cAJpM8ev6XHw998pRWG728z
 ```
 

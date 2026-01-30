@@ -24,11 +24,37 @@ scp -P 4242 level02@localhost:/home/user/level02/level02.pcap .
 
 ### Step 2: Parse PCAP to Extract TCP Payloads
 
+**Method 1: Using `tshark` Command-line (Fastest Manual Method)**
+
+Extract telnet packets directly from PCAP:
+
+```bash
+# Extract all TCP payload data from the PCAP
+tshark -r level02.pcap -Y "tcp" -T fields -e tcp.payload | xxd -r -p > telnet_data.bin
+cat telnet_data.bin | od -A x -t x1z
+```
+
+Or use Wireshark to view telnet follow stream (GUI method):
+```bash
+wireshark level02.pcap
+# Follow TCP Stream (right-click on packet) to view telnet session
+```
+
+**Method 2: Using `tcpdump` to Extract Packets**
+
+```bash
+tcpdump -r level02.pcap -A | grep -E '[a-zA-Z0-9]' | head -30
+# Look for telnet session data with login attempts
+```
+
+**Method 3: Using dpkt Library (Detailed Method)**
+
 Use dpkt library to parse the PCAP file and extract telnet session data:
 
 ```python
 import dpkt
 
+packets = []
 with open("level02.pcap", "rb") as f:
     for ts, buf in dpkt.pcap.Reader(f):
         try:

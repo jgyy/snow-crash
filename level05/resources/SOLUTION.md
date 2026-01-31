@@ -14,6 +14,14 @@ Arbitrary code execution via writable cron script directory with privilege escal
 
 ## Discovery
 
+### Connect to level05 via SSH
+Use the token from Level04 as the password:
+```bash
+sshpass -p "ne2searoevaevoem4ov4ar8ap" ssh -o StrictHostKeyChecking=no -p 4242 level05@localhost
+```
+
+Once connected, proceed with the exploit steps below.
+
 ### Mail Hint
 Check the mail for level05 to discover the cron job:
 ```bash
@@ -84,15 +92,6 @@ The token is extracted from the getflag output:
 ```
 Check flag.Here is your token : viuaaale9huek52boumoomioc
 ```
-
-## Security Flaws
-
-1. **Writable script directory**: `/opt/openarenaserver/` is writable by level05
-2. **Cron privilege escalation**: Cron job runs arbitrary scripts as flag05
-3. **No file validation**: No checks on what files are executed
-4. **Predictable execution**: Cron runs every 2 minutes (known timing)
-5. **ACL misconfiguration**: ACLs grant write access to level05 on flag05-owned scripts
-6. **File deletion after execution**: Scripts auto-deleted (but that's after execution)
 
 ## Answer
 

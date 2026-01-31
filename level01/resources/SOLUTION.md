@@ -37,35 +37,11 @@ The hash `42hDRfypTqqnw` is a **DES crypt hash**:
 **Method 1: Using `john` the Ripper (Fastest Manual Method)**
 
 Create a file with the hash in john format and crack it:
+snow-crash vm does not have the proper john binary, so have to do outside vm
 
 ```bash
 echo "flag01:42hDRfypTqqnw" > /tmp/hashes.txt
-john --format=des /tmp/hashes.txt
-# Output: abcdefg (flag01)
 john --show /tmp/hashes.txt
-# Output: flag01:abcdefg
-```
-
-**Method 2: Using Python with passlib (Alternative)**
-
-Test common passwords with Python:
-
-```python
-from passlib.context import CryptContext
-
-des_ctx = CryptContext(schemes=["des_crypt"], deprecated="auto")
-target_hash = "42hDRfypTqqnw"
-salt = target_hash[:2]
-
-common_passwords = [
-    "abcdefg", "password", "123456", "admin", "test",
-    "root", "flag01", "level01", "snowcrash"
-]
-
-for pwd in common_passwords:
-    if des_ctx.hash(pwd[:8], salt=salt) == target_hash:
-        print(f"Found: {pwd}")
-        break
 ```
 
 **Result:** The password `abcdefg` matches the hash.

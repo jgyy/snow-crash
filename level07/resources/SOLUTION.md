@@ -30,9 +30,10 @@ system(format);
 
 ### Exploit Steps
 
-#### Step 1: Connect to level07
+#### Step 1: Connect to level07 via SSH
+Use the token from Level06 as the password:
 ```bash
-sshpass -p "PASSWORD" ssh -o StrictHostKeyChecking=no -p 4242 level07@localhost
+sshpass -p "wiok45aaoguiboiki2tuin6ub" ssh -o StrictHostKeyChecking=no -p 4242 level07@localhost
 ```
 
 #### Step 2: Inject Shell Command via LOGNAME Environment Variable

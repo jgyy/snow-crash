@@ -19,19 +19,23 @@ Plain-text telnet traffic in PCAP file allows extraction of login credentials.
 The flag02-owned PCAP file can be copied from the VM:
 
 ```bash
-scp -P 4242 level02@localhost:/home/user/level02/level02.pcap .
+sshpass -p "f2av5il02puano7naaf6adaaf" scp -P 4242 level02@localhost:/home/user/level02/level02.pcap .
 ```
 
 ### Step 2: Parse PCAP to Extract TCP Payloads
 
-**Method 1: Using `tshark` Command-line (Fastest Manual Method)**
+**Method 1: Using `scapy` Python library**
 
 Extract telnet packets directly from PCAP:
 
 ```bash
-# Extract all TCP payload data from the PCAP
-tshark -r level02.pcap -Y "tcp" -T fields -e tcp.payload | xxd -r -p > telnet_data.bin
-cat telnet_data.bin | od -A x -t x1z
+python3 << 'EOF'
+from scapy.all import rdpcap, TCP
+pkts = rdpcap('level02.pcap')
+for pkt in pkts:
+    if TCP in pkt and pkt[TCP].payload:
+        print(pkt[TCP].payload.load)
+EOF
 ```
 
 Or use Wireshark to view telnet follow stream (GUI method):
@@ -45,25 +49,6 @@ wireshark level02.pcap
 ```bash
 tcpdump -r level02.pcap -A | grep -E '[a-zA-Z0-9]' | head -30
 # Look for telnet session data with login attempts
-```
-
-**Method 3: Using dpkt Library (Detailed Method)**
-
-Use dpkt library to parse the PCAP file and extract telnet session data:
-
-```python
-import dpkt
-
-packets = []
-with open("level02.pcap", "rb") as f:
-    for ts, buf in dpkt.pcap.Reader(f):
-        try:
-            eth = dpkt.ethernet.Ethernet(buf)
-            if isinstance(eth.data, dpkt.ip.IP) and isinstance(eth.data.data, dpkt.tcp.TCP):
-                if eth.data.data.data:
-                    packets.append(eth.data.data.data)
-        except:
-            continue
 ```
 
 ### Step 3: Decode Telnet Session with Backspace Handling

